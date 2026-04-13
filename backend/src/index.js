@@ -1,10 +1,28 @@
 require('dotenv').config();
 
 const prisma = require('./lib/prisma');
-const app = require('./app');
+const express = require('express');
+const cors = require('cors');
 
+// 只加载你有的图书路由（不加载登录路由，避免报错）
+const booksRouter = require('./routes/books');
+
+const app = express();
 const port = Number(process.env.PORT) || 3001;
 
+// 必须的中间件
+app.use(cors());
+app.use(express.json());
+
+// 健康检查
+app.get('/health', (req, res) => {
+  res.json({ status: "ok", message: "Library API is running" });
+});
+
+// 挂载你的图书功能（保证能跑）
+app.use('/books', booksRouter);
+
+// 队友的优雅关闭代码（保留）
 async function shutdown(signal) {
   console.log(`Received ${signal}, shutting down gracefully...`);
   await prisma.$disconnect();

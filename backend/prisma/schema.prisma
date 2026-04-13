@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./prisma/dev.db"
 }
 
 enum Role {
@@ -20,36 +20,37 @@ enum HoldStatus {
 }
 
 model User {
-  id                    Int                     @id @default(autoincrement())
-  name                  String
-  email                 String                  @unique
-  passwordHash          String
-  studentId             String?                 @unique
-  role                  Role                    @default(STUDENT)
-  createdAt             DateTime                @default(now())
-  loans                 Loan[]
-  ratings               Rating[]
-  holds                 Hold[]
-  wishlists             Wishlist[]
-  auditLogs             AuditLog[]
-  AnnouncementPublisher AnnouncementPublisher[]
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  studentId    String?   @unique
+  role         Role      @default(STUDENT)
+  createdAt    DateTime  @default(now())
+  loans        Loan[]
+  ratings      Rating[]
+  holds        Hold[]
+  wishlists    Wishlist[]
+  auditLogs    AuditLog[]
 }
 
 model Book {
-  id            Int        @id @default(autoincrement())
-  title         String
-  author        String
-  isbn          String     @unique
-  genre         String
-  description   String?
-  language      String     @default("English")
-  shelfLocation String?
-  available     Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  loans         Loan[]
-  ratings       Rating[]
-  holds         Hold[]
-  wishlists     Wishlist[]
+  id             Int      @id @default(autoincrement())
+  title          String
+  author         String
+  isbn           String   @unique
+  genre          String
+  description    String?
+  language       String   @default("English")
+  shelfLocation  String?
+  available      Boolean  @default(true)        // 保留兼容
+  totalCopies    Int      @default(1)           // 新增
+  availableCopies Int     @default(1)           // 新增
+  createdAt      DateTime @default(now())
+  loans          Loan[]
+  ratings        Rating[]
+  holds          Hold[]
+  wishlists      Wishlist[]
 }
 
 model Loan {
@@ -116,31 +117,13 @@ model AuditLog {
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
 }
+model Librarian {
+  id         Int      @id @default(autoincrement())
+  employeeId String   @unique @map("employee_id")
+  name       String
+  password   String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-// 系统公告表
-model Announcement {
-  id          Int       @id @default(autoincrement())
-  title       String // 标题
-  content     String // 内容
-  isPinned    Boolean   @default(false) // 是否置顶
-  publishDate DateTime  @default(now()) // 发布日期
-  expiryDate  DateTime? // 过期时间（为空则永不过期）
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // 通过链接表与 User 关联（多对多）
-  publishers AnnouncementPublisher[]
-}
-
-// 链接表：记录哪些用户发布了（或关联了）哪些公告
-model AnnouncementPublisher {
-  id             Int      @id @default(autoincrement())
-  announcementId Int
-  userId         Int
-  assignedAt     DateTime @default(now()) // 关联时间
-
-  announcement Announcement @relation(fields: [announcementId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
-
-  @@unique([announcementId, userId]) // 防止重复关联
+  @@map("librarians")
 }
