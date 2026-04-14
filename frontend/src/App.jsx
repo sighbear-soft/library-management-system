@@ -5,9 +5,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('search');
+ const [isLoggedIn, setIsLoggedIn] = useState(false);
+ const [loading, setLoading] = useState(true);
+const [activeTab, setActiveTab] = useState('search');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -28,7 +28,7 @@ function App() {
     setActiveTab('search');
   };
 
-  if (loading) return <div>Loading...</div>;
+ if (loading) return <div>Loading...</div>;
 
   const path = window.location.pathname;
 
@@ -39,7 +39,7 @@ function App() {
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
   }
-
+  
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', background: '#3b82f6', color: 'white' }}>

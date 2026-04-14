@@ -11,6 +11,7 @@ function BookSearch() {
 
   const token = localStorage.getItem('token');
 
+  // 搜索函数
   const handleSearch = async () => {
     setLoading(true);
     setSearched(true);
@@ -38,7 +39,9 @@ function BookSearch() {
     }
   };
 
+  // 借阅函数
   const handleBorrow = async (bookId) => {
+    const token = localStorage.getItem('token');
     if (!token) {
       setMessage('Please login first');
       return;
@@ -46,25 +49,24 @@ function BookSearch() {
 
     setMessage('');
     try {
-      const response = await fetch('http://localhost:3001/loans', {
+      const response = await fetch(`http://localhost:3001/api/reader/borrow/${bookId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ bookId })
+        }
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('Borrow success!');
-        handleSearch();
+        setMessage('借阅成功！截止日期：' + new Date(data.loan.dueDate).toLocaleDateString());
+        handleSearch(); // 刷新搜索结果
       } else {
-        setMessage(data.message || 'Borrow failed');
+        setMessage(data.message || '借阅失败');
       }
     } catch (error) {
-      setMessage('Borrow failed: ' + error.message);
+      setMessage('借阅失败：' + error.message);
     }
   };
 
@@ -82,7 +84,7 @@ function BookSearch() {
       <h1>Book Search</h1>
 
       {message && (
-        <div style={{ padding: '10px', marginBottom: '20px', backgroundColor: message.includes('success') ? '#d4edda' : '#f8d7da', color: message.includes('success') ? '#155724' : '#721c24', borderRadius: '4px' }}>
+        <div style={{ padding: '10px', marginBottom: '20px', backgroundColor: message.includes('成功') ? '#d4edda' : '#f8d7da', color: message.includes('成功') ? '#155724' : '#721c24', borderRadius: '4px' }}>
           {message}
         </div>
       )}
@@ -127,7 +129,6 @@ function BookSearch() {
                       {book.available && book.availableCopies > 0 ? 'Available' : 'Borrowed'}
                     </span>
                   </p>
-                  {/* 库存显示 */}
                   <p><strong>Stock:</strong> {book.availableCopies || 0} / {book.totalCopies || 1}</p>
                   {book.available && book.availableCopies > 0 && (
                     <button onClick={() => handleBorrow(book.id)} style={{ marginTop: '10px', padding: '6px 12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>

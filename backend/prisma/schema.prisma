@@ -63,6 +63,7 @@ model Loan {
   fineAmount   Float?    @default(0)
   finePaid     Boolean?  @default(false)
   fineForgiven Boolean?  @default(false)
+  renewCount   Int       @default(0) 
   createdAt    DateTime  @default(now())
   book         Book      @relation(fields: [bookId], references: [id])
   user         User      @relation(fields: [userId], references: [id])
