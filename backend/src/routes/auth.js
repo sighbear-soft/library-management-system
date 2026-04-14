@@ -1,11 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
+
+const { signLibrarianToken } = require('../lib/librarianToken');
 
 const router = express.Router();
 const prisma = new PrismaClient();
-const JWT_SECRET = 'library-management-secret-key-2024';
 
 // 注册接口
 router.post('/register', async (req, res) => {
@@ -71,10 +71,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: '工号或密码错误' });
     }
 
-    const token = jwt.sign(
+    const token = signLibrarianToken(
       { id: librarian.id, employeeId: librarian.employeeId, name: librarian.name },
-      JWT_SECRET,
-      { expiresIn: '7d' }
     );
 
     res.json({
