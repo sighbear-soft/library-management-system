@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
 import ReaderLayout from '../components/ReaderLayout';
 import DueReminderBanner from '../components/DueReminderBanner';
+=======
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 
 function MyHistory() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+<<<<<<< HEAD
   const [message, setMessage] = useState('');
   const [user, setUser] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -114,10 +118,19 @@ function MyHistory() {
     }
   };
 
+=======
+  const [renewMessage, setRenewMessage] = useState('');
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
   const fetchHistory = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+<<<<<<< HEAD
         navigate('/login');
         return;
       }
@@ -127,6 +140,24 @@ function MyHistory() {
       });
 
       if (!response.ok) throw new Error('Failed to fetch');
+=======
+        setError('Please login first');
+        setLoading(false);
+        return;
+      }
+
+      // ¸ÄÎªµ÷ÓÃÄãµÄºó¶Ë½Ó¿Ú
+      const response = await fetch('http://localhost:3001/api/reader/my-borrows', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch borrow history');
+      }
+
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
       const data = await response.json();
       setHistory(data.loans || []);
     } catch (err) {
@@ -136,6 +167,7 @@ function MyHistory() {
     }
   };
 
+<<<<<<< HEAD
   const fetchUserRatings = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -159,6 +191,17 @@ function MyHistory() {
 
   const handleRenew = async (copyId) => {
     const token = localStorage.getItem('token');
+=======
+  // Ðø½èº¯Êý
+  const handleRenew = async (loanId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setRenewMessage('ÇëÏÈµÇÂ¼');
+      return;
+    }
+
+    setRenewMessage('');
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
     try {
       const response = await fetch('http://localhost:3001/api/reader/renew', {
         method: 'POST',
@@ -166,6 +209,7 @@ function MyHistory() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+<<<<<<< HEAD
         body: JSON.stringify({ copyId: copyId })
       });
       const data = await response.json();
@@ -418,10 +462,81 @@ function MyHistory() {
       {message && (
         <div className={`p-4 mb-6 rounded-lg ${message.includes('æˆåŠŸ') || message.includes('å·²') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {message}
+=======
+        body: JSON.stringify({ loanIds: [loanId] })
+      });
+
+      const data = await response.json();
+      const result = data.results[0];
+
+      if (result.success) {
+        setRenewMessage(`Ðø½è³É¹¦£¡ÐÂ½ØÖ¹ÈÕÆÚ£º${new Date(result.newDueDate).toLocaleDateString()}`);
+        fetchHistory(); // Ë¢ÐÂÁÐ±í
+      } else {
+        setRenewMessage(`Ðø½èÊ§°Ü£º${result.message}`);
+      }
+    } catch (error) {
+      setRenewMessage('Ðø½èÊ§°Ü£º' + error.message);
+    }
+
+    // 3ÃëºóÇå³ýÏûÏ¢
+    setTimeout(() => setRenewMessage(''), 3000);
+  };
+
+  const getStatusText = (loan) => {
+    const dueDate = new Date(loan.dueDate);
+    const today = new Date();
+    if (loan.returnDate) return 'ÒÑ¹é»¹';
+    if (dueDate < today) return 'ÓâÆÚ';
+    return '½èÔÄÖÐ';
+  };
+
+  const getStatusColor = (loan) => {
+    const dueDate = new Date(loan.dueDate);
+    const today = new Date();
+    if (loan.returnDate) return '#10b981';
+    if (dueDate < today) return '#ef4444';
+    return '#3b82f6';
+  };
+
+  // ÅÐ¶ÏÊÇ·ñ¿ÉÒÔÐø½è£¨Î´¹é»¹¡¢Î´ÓâÆÚ¡¢Ðø½è´ÎÊý<2£©
+  const canRenew = (loan) => {
+    if (loan.returnDate) return false;
+    const dueDate = new Date(loan.dueDate);
+    const today = new Date();
+    if (dueDate < today) return false;
+    return (loan.renewCount || 0) < 2;
+  };
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '40px' }}>¼ÓÔØÖÐ...</div>;
+  }
+
+  if (error) {
+    return <div style={{ textAlign: 'center', padding: '40px', color: 'red' }}>{error}</div>;
+  }
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', borderBottom: '2px solid #3b82f6', paddingBottom: '10px' }}>
+        ÎÒµÄ½èÔÄ
+      </h2>
+
+      {renewMessage && (
+        <div style={{
+          padding: '10px',
+          marginBottom: '20px',
+          backgroundColor: renewMessage.includes('³É¹¦') ? '#d4edda' : '#f8d7da',
+          color: renewMessage.includes('³É¹¦') ? '#155724' : '#721c24',
+          borderRadius: '4px'
+        }}>
+          {renewMessage}
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
         </div>
       )}
 
       {history.length === 0 ? (
+<<<<<<< HEAD
         <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
           æš‚æ— å€Ÿé˜…è®°å½•
         </div>
@@ -646,6 +761,71 @@ function MyHistory() {
         </div>
       )}
     </ReaderLayout>
+=======
+        <p style={{ textAlign: 'center', color: '#6b7280', padding: '40px' }}>ÔÝÎÞ½èÔÄ¼ÇÂ¼</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <thead style={{ backgroundColor: '#f3f4f6' }}>
+              <tr>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>ÊéÃû</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>×÷Õß</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>½èÊéÈÕÆÚ</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ó¦»¹ÈÕÆÚ</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Ðø½è´ÎÊý</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>×´Ì¬</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>²Ù×÷</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((loan) => (
+                <tr key={loan.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: '12px' }}>{loan.book?.title || 'Î´Öª'}</td>
+                  <td style={{ padding: '12px' }}>{loan.book?.author || 'Î´Öª'}</td>
+                  <td style={{ padding: '12px' }}>{new Date(loan.checkoutDate).toLocaleDateString()}</td>
+                  <td style={{ padding: '12px' }}>{new Date(loan.dueDate).toLocaleDateString()}</td>
+                  <td style={{ padding: '12px' }}>{loan.renewCount || 0}/2</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      backgroundColor: getStatusColor(loan),
+                      color: 'white',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontSize: '12px'
+                    }}>
+                      {getStatusText(loan)}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px' }}>
+                    {canRenew(loan) && (
+                      <button
+                        onClick={() => handleRenew(loan.id)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#28a745',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Ðø½è
+                      </button>
+                    )}
+                    {!canRenew(loan) && loan.returnDate === null && (
+                      <span style={{ color: '#dc3545', fontSize: '12px' }}>
+                        {(loan.renewCount || 0) >= 2 ? 'ÒÑ´ïÐø½èÉÏÏÞ' : 'ÓâÆÚ²»¿ÉÐø½è'}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
   );
 }
 

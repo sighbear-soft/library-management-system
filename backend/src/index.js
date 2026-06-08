@@ -3,15 +3,19 @@ require('dotenv').config();
 const prisma = require('./lib/prisma');
 const express = require('express');
 const cors = require('cors');
+<<<<<<< HEAD
 const cron = require('node-cron');
 
 // 引入邮件和提醒服务
 const { initEmailService } = require('./lib/email');
 const { checkAndSendReminders } = require('./lib/reminder');
+=======
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 
 // 1. 引入路由文件
 const booksRouter = require('./routes/books');
 const logsRouter = require('./routes/logs');
+<<<<<<< HEAD
 const loansRouter = require('./routes/loans'); // 借阅路由
 const authRouter = require('./routes/auth');   // 鉴权路由
 const readersRouter = require('./routes/readers');
@@ -28,6 +32,12 @@ const remindersRouter = require('./routes/reminders');  // 图书到期提醒路
 const backupService = require("./services/backup");
 const { runDueReminderJob, getNextDueReminderTime } = require('./services/dueReminder');
 const { expireReservations } = require('./services/expireReservations');  // 新增：预约过期清理
+=======
+const loansRouter = require('./routes/loans'); // 你的借阅路由
+const authRouter = require('./routes/auth');   // 鉴权路由
+const readersRouter = require('./routes/readers');
+const readerBorrowRouter = require('./routes/reader-borrow');
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -35,7 +45,10 @@ const port = Number(process.env.PORT) || 3001;
 // 必须的中间件
 app.use(cors());
 app.use(express.json());
+<<<<<<< HEAD
 app.use(express.urlencoded({ extended: false }));
+=======
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 
 // 健康检查
 app.get('/health', (req, res) => {
@@ -47,6 +60,7 @@ app.use('/api/auth', authRouter);           // 学生登录
 app.use('/api/librarian/auth', authRouter); // 馆员登录
 app.use('/api/books', booksRouter);
 app.use('/api/logs', logsRouter);
+<<<<<<< HEAD
 app.use('/api/loans', loansRouter);         // 借阅历史入口
 app.use('/api/announcements', announcementsRouter);
 app.use('/api/messages', messagesRouter);   // 消息系统路由（你的）
@@ -60,6 +74,12 @@ app.use('/api/statistics', statisticsRoutes);                            // 统�
 app.use('/api/config', configRouter);                                        // 系统配置
 app.use('/api/backups', backupsRouter);                                      // 数据库备份
 app.use('/api/admin/blocklist', blocklistRouter);                             // 用户黑名单管理
+=======
+app.use('/api/loans', loansRouter);         // 你的借阅历史入口
+app.use('/api/readers', readersRouter); 
+app.use('/api/reader', readerBorrowRouter);
+app.use('/loans', loansRouter);
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 
 // 兼容旧路径（保留队友的设置）
 app.use('/books', booksRouter);
@@ -77,6 +97,7 @@ app.use((error, req, res, next) => {
   });
 });
 
+<<<<<<< HEAD
 const BACKUP_INTERVAL_MS = (() => {
     const raw = parseInt(process.env.BACKUP_INTERVAL_MS || '21600000', 10);
     if (!Number.isFinite(raw) || raw <= 0) {
@@ -229,14 +250,29 @@ process.on('SIGINT', async () => {
     process.exit(0);
 });
 
+=======
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 async function shutdown(signal) {
   console.log(`Received ${signal}, shutting down gracefully...`);
   await prisma.$disconnect();
   process.exit(0);
 }
 
+<<<<<<< HEAD
+=======
+process.on('SIGINT', () => {
+  void shutdown('SIGINT');
+});
+
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b
 process.on('SIGTERM', () => {
   void shutdown('SIGTERM');
 });
 
+<<<<<<< HEAD
 startServer();
+=======
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+>>>>>>> af9ecfbeebfa89b807d4957f9b88257908c13b6b

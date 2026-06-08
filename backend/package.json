@@ -28,9 +28,9 @@
     "nodemailer": "^8.0.10"
   },
   "devDependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^5.22.0",
     "cross-env": "^10.1.0",
     "nodemon": "^3.1.14",
-    "prisma": "^6.19.3"
+    "prisma": "^5.22.0"
   }
 }
