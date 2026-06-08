@@ -34,7 +34,7 @@ function HomePage() {
         <p className="opacity-90">欢迎回来，在这里您可以搜索和借阅图书。</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div
           onClick={() => navigate('/search')}
           className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition cursor-pointer"
@@ -55,6 +55,18 @@ function HomePage() {
           <h2 className="text-xl font-bold mb-2">借阅记录</h2>
           <p className="text-gray-500 text-sm mb-4">查看我的借阅历史</p>
           <button className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+            进入 →
+          </button>
+        </div>
+
+        <div
+          onClick={() => navigate('/my-reservations')}
+          className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition cursor-pointer"
+        >
+          <div className="text-4xl mb-4">📅</div>
+          <h2 className="text-xl font-bold mb-2">我的预约</h2>
+          <p className="text-gray-500 text-sm mb-4">查看和管理您的图书预约</p>
+          <button className="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
             进入 →
           </button>
         </div>

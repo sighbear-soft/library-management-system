@@ -27,6 +27,7 @@ const blocklistRouter = require("./routes/blocklist");
 const remindersRouter = require('./routes/reminders');  // 图书到期提醒路由
 const backupService = require("./services/backup");
 const { runDueReminderJob, getNextDueReminderTime } = require('./services/dueReminder');
+const { expireReservations } = require('./services/expireReservations');  // 新增：预约过期清理
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -177,6 +178,19 @@ async function startServer() {
         startReminderScheduler(); // 启动图书到期提醒定时任务
         startDueReminderScheduler();
 
+        // ========== 新增：预约过期清理定时任务（每5分钟执行一次） ==========
+        cron.schedule('*/5 * * * *', async () => {
+            try {
+                const result = await expireReservations();
+                if (result.processed > 0) {
+                    console.log(`[${new Date().toISOString()}] 📅 预约过期清理: 处理 ${result.processed} 个，释放 ${result.released} 个副本`);
+                }
+            } catch (error) {
+                console.error(`[${new Date().toISOString()}] ❌ 预约过期清理失败:`, error.message);
+            }
+        });
+        console.log('⏰ 预约过期清理定时任务已启动（每5分钟执行一次）');
+
         app.listen(port, () => {
             console.log(`
 ╔═══════════════════════════════════════════════════════╗
@@ -190,6 +204,7 @@ async function startServer() {
 ║  💾 Backup endpoints: /api/backups/*                  ║
 ║  ⏰ Auto backup every ${BACKUP_INTERVAL_MS / 3600000} hours                    ║
 ║  📧 Reminder endpoints: /api/librarian/reminders/*    ║
+║  📅 Reservation expiry cleanup: every 5 minutes       ║
 ╚═══════════════════════════════════════════════════════╝
       `);
         });

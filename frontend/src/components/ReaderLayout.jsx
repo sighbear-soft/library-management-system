@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, BookOpen, Bell, MessageSquare, LogOut } from 'lucide-react';
+import { Home, Search, BookOpen, Bell, MessageSquare, LogOut, Calendar } from 'lucide-react';
 
 export default function ReaderLayout({ children, user, onLogout }) {
   const navigate = useNavigate();
@@ -9,6 +9,7 @@ export default function ReaderLayout({ children, user, onLogout }) {
     { to: '/', label: '首页', icon: Home },
     { to: '/search', label: '搜书', icon: Search },
     { to: '/history', label: '借阅记录', icon: BookOpen },
+    { to: '/my-reservations', label: '我的预约', icon: Calendar },  // 新增
     { to: '/announcements', label: '公告通知', icon: Bell },
     { to: '/messages', label: '消息', icon: MessageSquare },
   ];
@@ -85,7 +86,25 @@ export default function ReaderLayout({ children, user, onLogout }) {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      {/* 移动端底部导航栏 - 可选 */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-10">
+        {navLinks.map(({ to, label, icon: Icon }) => (
+          <Link
+            key={to}
+            to={to}
+            className={`flex flex-col items-center py-1 px-2 rounded-lg text-xs transition ${
+              location.pathname === to
+                ? 'text-blue-500'
+                : 'text-gray-500'
+            }`}
+          >
+            <Icon className="h-5 w-5" />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-20 md:pb-8">
         {children}
       </main>
     </div>

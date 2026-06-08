@@ -7,33 +7,14 @@ datasource db {
   url      = "file:./prisma/dev.db"
 }
 
-enum Role {
-  STUDENT
-  LIBRARIAN
-  ADMIN
-}
-
-enum HoldStatus {
-  WAITING
-  READY
-  CANCELLED
-}
-
-enum CopyStatus {
-  AVAILABLE
-  BORROWED
-  LOST
-  DAMAGED
-}
-
 model User {
   id                     Int                     @id @default(autoincrement())
   name                   String
   email                  String                  @unique
   passwordHash           String
   studentId              String?                 @unique
-  employeeId             String?                 @unique  // 馆员工号（你的功能需要）
-  role                   Role                    @default(STUDENT)
+  employeeId             String?                 @unique
+  role                   String                  @default("STUDENT")
   isBlocked              Boolean                 @default(false)
   blockReason            String?
   blockedAt              DateTime?
@@ -46,9 +27,10 @@ model User {
   auditLogs              AuditLog[]
   dueReminderLogs        DueReminderLog[]
   announcementPublishers AnnouncementPublisher[]
-  sentMessages           Message[]               @relation("MessageSender")  // 站内信（你的功能需要）
-  receivedMessages       Message[]               @relation("MessageReceiver")  // 站内信（你的功能需要）
+  sentMessages           Message[]               @relation("MessageSender")
+  receivedMessages       Message[]               @relation("MessageReceiver")
   reminderLogs           ReminderLog[]
+  reservations           Reservation[]
 }
 
 model Book {
@@ -69,32 +51,33 @@ model Book {
 }
 
 model Copy {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   bookId      Int
-  book        Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  barcode     String     @unique
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  barcode     String   @unique
   floor       Int?
   libraryArea String?
   shelfNo     String?
   shelfLevel  Int?
-  status      CopyStatus @default(AVAILABLE)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  status      String   @default("AVAILABLE")  // AVAILABLE, BORROWED, LOST, DAMAGED, RESERVED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   loans       Loan[]
+  reservations Reservation[]
 }
 
 model Loan {
   id           Int       @id @default(autoincrement())
   copyId       Int
   userId       Int
-  barcode      String    @unique  // 借阅条形码 BC-xxxxxx-xxx
+  barcode      String    @unique
   checkoutDate DateTime  @default(now())
   dueDate      DateTime
   returnDate   DateTime?
   fineAmount   Float     @default(0)
   finePaid     Boolean   @default(false)
   fineForgiven Boolean   @default(false)
-  renewCount   Int       @default(0)  // 续借次数（你的功能需要）
+  renewCount   Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   copy         Copy      @relation(fields: [copyId], references: [id])
@@ -108,9 +91,9 @@ model Rating {
   bookId    Int
   userId    Int
   stars     Int      @default(1)
-  review    String?  // 评论内容（你的功能需要）
+  review    String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt  // 评论更新时间（你的功能需要）
+  updatedAt DateTime @updatedAt
   book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
 
@@ -118,13 +101,13 @@ model Rating {
 }
 
 model Hold {
-  id        Int        @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   bookId    Int
   userId    Int
-  status    HoldStatus @default(WAITING)
-  createdAt DateTime   @default(now())
-  book      Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  user      User       @relation(fields: [userId], references: [id])
+  status    String   @default("WAITING")  // WAITING, READY, CANCELLED
+  createdAt DateTime @default(now())
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Wishlist {
@@ -196,24 +179,23 @@ model BackupLog {
   filename    String
   filepath    String
   sizeBytes   BigInt
-  status      String   @default("completed") // completed, failed, restored
-  type        String   @default("manual")    // manual, scheduled
+  status      String   @default("completed")
+  type        String   @default("manual")
   note        String?
   createdAt   DateTime @default(now())
   restoredAt  DateTime?
-  createdBy   Int?     // 管理员 userId
+  createdBy   Int?
 }
 
-// 图书到期提醒日志模型
 model ReminderLog {
   id            Int      @id @default(autoincrement())
   userId        Int
   loanId        Int
-  bookTitle     String   // 图书名称
-  dueDate       DateTime // 图书到期日期
-  sendStatus    String   @default("success") // success, failed
+  bookTitle     String
+  dueDate       DateTime
+  sendStatus    String   @default("success")
   sendTime      DateTime @default(now())
-  errorMessage  String?  // 如果发送失败，记录错误信息
+  errorMessage  String?
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   loan          Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
@@ -232,4 +214,22 @@ model DueReminderLog {
   loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
   book Book @relation(fields: [bookId], references: [id])
+}
+
+// 新增：预约模型
+model Reservation {
+  id         Int      @id @default(autoincrement())
+  copyId     Int
+  userId     Int
+  status     String   @default("PENDING")  // PENDING, CONFIRMED, EXPIRED, CANCELLED
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  copy       Copy     @relation(fields: [copyId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+  
+  @@index([copyId])
+  @@index([userId])
+  @@index([status, expiresAt])
 }

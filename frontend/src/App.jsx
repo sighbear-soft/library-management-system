@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import BookSearch from './pages/BookSearch';
 import HomePage from './pages/HomePage';
 import MyHistory from './reader/MyHistory';
+import MyReservations from './reader/MyReservations';
 import UnifiedLogin from './pages/UnifiedLogin';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
@@ -15,7 +16,6 @@ import Messages from './pages/Messages';
 import SystemConfig from './pages/SystemConfig';
 import AdminBackupPage from './pages/AdminBackupPage';
 import AdminBlocklist from './pages/AdminBlocklist';
-
 
 function App() {
   const navigate = useNavigate();
@@ -58,6 +58,7 @@ function App() {
       <Route path="/announcements" element={<Announcements />} />
       <Route path="/admin/announcements" element={<AdminAnnouncements />} />
       <Route path="/history" element={<MyHistory />} />
+      <Route path="/my-reservations" element={<MyReservations />} />
       <Route path="/messages" element={<Messages />} />
       <Route path="/search" element={<BookSearch />} />
       <Route path="/" element={

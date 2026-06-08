@@ -92,7 +92,8 @@ function SearchPage() {
     }
   };
 
-  const handleBorrowCopy = async (copyId, bookTitle) => {
+  // 修改：借阅改为预约
+  const handleReserveCopy = async (copyId, bookTitle) => {
     const token = getToken();
     if (!token) {
       setMessage('请先登录');
@@ -111,15 +112,20 @@ function SearchPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        setMessage(`借阅成功！${bookTitle}`);
+      if (response.ok && data.success) {
+        setMessage(`✅ 预约成功！《${bookTitle}》请在2小时内到图书馆借出，否则预约将自动失效。`);
         handleSearch();
         setShowCopies(null);
+        setTimeout(() => {
+          if (window.confirm('预约成功！是否查看我的预约？')) {
+            navigate('/my-reservations');
+          }
+        }, 500);
       } else {
-        setMessage(data.message || '借阅失败');
+        setMessage(data.message || '预约失败');
       }
     } catch (error) {
-      setMessage('借阅失败: ' + error.message);
+      setMessage('预约失败: ' + error.message);
     }
   };
 
@@ -185,12 +191,22 @@ function SearchPage() {
       <DueReminderBanner />
 
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 mb-8 text-white">
-        <h2 className="text-2xl font-bold mb-2">图书搜索</h2>
-        <p className="opacity-90">搜索并浏览图书馆的图书</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">图书搜索</h2>
+            <p className="opacity-90">搜索并浏览图书馆的图书</p>
+          </div>
+          <button
+            onClick={() => navigate('/my-reservations')}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center gap-2"
+          >
+            📅 我的预约
+          </button>
+        </div>
       </div>
 
       {message && (
-        <div className={`p-4 rounded-lg mb-6 ${message.includes('成功') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+        <div className={`p-4 rounded-lg mb-6 ${message.includes('成功') || message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {message}
         </div>
       )}
@@ -302,10 +318,10 @@ function SearchPage() {
                             条码: {copy.barcode} | 位置: {copy.floor}F {copy.libraryArea} {copy.shelfNo}-{copy.shelfLevel}
                           </span>
                           <button
-                            onClick={() => handleBorrowCopy(copy.id, book.title)}
+                            onClick={() => handleReserveCopy(copy.id, book.title)}
                             className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition"
                           >
-                            借阅此副本
+                            📅 预约此副本
                           </button>
                         </div>
                       ))}

@@ -250,6 +250,8 @@ async function handlePayFine(req, res) {
   }
 }
 
+// ==================== 原有功能（保留） ====================
+
 // 获取我的借阅列表（包括已归还和未归还）
 router.get('/my-borrows', requireAuth, async (req, res) => {
   try {
@@ -297,15 +299,17 @@ router.get('/available-copies/:bookId', requireAuth, async (req, res) => {
   }
 });
 
-// 借阅图书（选择具体副本）
+// ==================== 修改：借阅改为预约 ====================
+// 预约图书（原来的直接借阅改为预约，2小时内到馆确认）
 router.post('/borrow/:copyId', requireAuth, async (req, res) => {
   if (req.user.isBlocked) {
-    return res.status(403).json({ message: `您的账号已被封禁，无法借阅书籍。封禁原因：${req.user.blockReason || '违反图书馆相关规定'}` });
+    return res.status(403).json({ message: `您的账号已被封禁，无法预约书籍。封禁原因：${req.user.blockReason || '违反图书馆相关规定'}` });
   }
 
   try {
     const copyId = parseInt(req.params.copyId);
 
+    // 1. 检查副本是否存在且可预约
     const copy = await prisma.copy.findUnique({
       where: { id: copyId },
       include: { book: true }
@@ -316,16 +320,31 @@ router.post('/borrow/:copyId', requireAuth, async (req, res) => {
     }
 
     if (copy.status !== 'AVAILABLE') {
-      return res.status(400).json({ message: '该副本不可借' });
+      return res.status(400).json({ message: '该副本不可预约（已被借出或损坏）' });
     }
 
-    const currentCount = await prisma.loan.count({
+    // 2. 检查用户是否有未完成的预约（防止重复预约同一本书）
+    const existingReservation = await prisma.reservation.findFirst({
+      where: {
+        userId: req.user.id,
+        copyId: copyId,
+        status: 'PENDING'
+      }
+    });
+
+    if (existingReservation) {
+      return res.status(400).json({ message: '您已预约过这本书，请尽快到图书馆借出' });
+    }
+
+    // 3. 检查用户当前借阅数量限制
+    const currentBorrowCount = await prisma.loan.count({
       where: { userId: req.user.id, returnDate: null }
     });
-    if (currentCount >= MAX_BORROW_LIMIT) {
-      return res.status(400).json({ message: `最多同时借阅${MAX_BORROW_LIMIT}本书` });
+    if (currentBorrowCount >= MAX_BORROW_LIMIT) {
+      return res.status(400).json({ message: `您当前借阅数量已达上限（${MAX_BORROW_LIMIT}本），请先归还部分图书` });
     }
 
+    // 4. 检查是否已借阅过这本书（未归还）
     const existingLoan = await prisma.loan.findFirst({
       where: {
         userId: req.user.id,
@@ -337,57 +356,151 @@ router.post('/borrow/:copyId', requireAuth, async (req, res) => {
       return res.status(400).json({ message: '您已借阅过这本书，请先归还' });
     }
 
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
+    // 5. 创建预约记录，并临时锁定副本状态
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 2); // 2小时后过期
 
-    const barcode = await generateUniqueBarcode();
-    
-    const loan = await prisma.loan.create({
-      data: {
-        copyId: copyId,
+    // 使用事务：创建预约 + 更新副本状态为 RESERVED
+    const reservation = await prisma.$transaction(async (tx) => {
+      // 再次确认副本仍然可用（防止并发）
+      const currentCopy = await tx.copy.findUnique({
+        where: { id: copyId }
+      });
+      
+      if (currentCopy.status !== 'AVAILABLE') {
+        throw new Error('该副本已被他人预约或借出');
+      }
+
+      // 更新副本状态为预约锁定
+      await tx.copy.update({
+        where: { id: copyId },
+        data: { status: 'RESERVED' }
+      });
+
+      // 创建预约记录
+      return tx.reservation.create({
+        data: {
+          copyId: copyId,
+          userId: req.user.id,
+          expiresAt: expiresAt,
+          status: 'PENDING'
+        }
+      });
+    });
+
+    writeAuditLog({
+      userId: req.user.id,
+      action: 'RESERVE_BOOK',
+      entity: 'Reservation',
+      entityId: reservation.id,
+      detail: `读者 ${req.user.email} 预约了《${copy.book.title}》(副本 ${copyId})，有效期至 ${expiresAt.toISOString()}`,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `预约成功！请在2小时内到图书馆借出《${copy.book.title}》，否则预约将自动失效。`,
+      reservation: {
+        id: reservation.id,
+        bookTitle: copy.book.title,
+        copyBarcode: copy.barcode,
+        expiresAt: expiresAt,
+        expiresInMinutes: 120
+      }
+    });
+  } catch (error) {
+    console.error('预约失败:', error);
+    res.status(500).json({ message: error.message || '预约失败' });
+  }
+});
+
+// ==================== 新增：预约相关接口 ====================
+
+// 获取我的预约列表
+router.get('/my-reservations', requireAuth, async (req, res) => {
+  try {
+    const reservations = await prisma.reservation.findMany({
+      where: {
         userId: req.user.id,
-        barcode,
-        dueDate: dueDate,
-        fineAmount: 0,
-        finePaid: false,
-        fineForgiven: false,
-        renewCount: 0
+        status: { in: ['PENDING', 'EXPIRED', 'CANCELLED'] }
       },
       include: {
         copy: {
           include: { book: true }
         }
-      }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    await prisma.copy.update({
-      where: { id: copyId },
-      data: { status: 'BORROWED' }
+    const now = new Date();
+    const formattedReservations = reservations.map(res => ({
+      id: res.id,
+      bookTitle: res.copy.book.title,
+      bookAuthor: res.copy.book.author,
+      copyBarcode: res.copy.barcode,
+      status: res.status,
+      expiresAt: res.expiresAt,
+      isExpired: res.status === 'PENDING' && new Date(res.expiresAt) < now,
+      createdAt: res.createdAt
+    }));
+
+    res.json({ success: true, reservations: formattedReservations });
+  } catch (error) {
+    console.error('获取预约列表失败:', error);
+    res.status(500).json({ success: false, message: '获取预约列表失败' });
+  }
+});
+
+// 取消预约
+router.post('/cancel-reservation/:reservationId', requireAuth, async (req, res) => {
+  try {
+    const reservationId = parseInt(req.params.reservationId);
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: { copy: true, user: true }
+    });
+
+    if (!reservation) {
+      return res.status(404).json({ success: false, message: '预约记录不存在' });
+    }
+
+    if (reservation.userId !== req.user.id) {
+      return res.status(403).json({ success: false, message: '无权取消此预约' });
+    }
+
+    if (reservation.status !== 'PENDING') {
+      return res.status(400).json({ success: false, message: `预约状态为 ${reservation.status}，无法取消` });
+    }
+
+    // 使用事务：更新预约状态 + 释放副本
+    await prisma.$transaction(async (tx) => {
+      await tx.reservation.update({
+        where: { id: reservationId },
+        data: { status: 'CANCELLED' }
+      });
+
+      await tx.copy.update({
+        where: { id: reservation.copyId },
+        data: { status: 'AVAILABLE' }
+      });
     });
 
     writeAuditLog({
       userId: req.user.id,
-      action: 'BORROW_BOOK',
-      entity: 'Loan',
-      entityId: loan.id,
-      detail: `读者 ${req.user.email} 自助借阅《${loan.copy.book.title}》(副本 ${copyId})`,
+      action: 'CANCEL_RESERVATION',
+      entity: 'Reservation',
+      entityId: reservationId,
+      detail: `读者 ${req.user.email} 取消了预约`,
     });
 
-    res.status(201).json({
-      message: '借阅成功',
-      loan: {
-        id: loan.id,
-        barcode: loan.barcode,
-        bookTitle: loan.copy.book.title,
-        copyBarcode: loan.copy.barcode,
-        dueDate: loan.dueDate
-      }
-    });
+    res.json({ success: true, message: '预约已取消，库存已释放' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: '借阅失败' });
+    console.error('取消预约失败:', error);
+    res.status(500).json({ success: false, message: '取消预约失败' });
   }
 });
+
+// ==================== 原有功能（保留） ====================
 
 // 续借图书 - 使用 copyId
 router.post('/renew', requireAuth, async (req, res) => {
